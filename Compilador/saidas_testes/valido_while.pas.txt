@@ -1,0 +1,50 @@
+=== Arquivo: exemplos_pascal/validos/while.pas ===
+--- Saída do Terminal ---
+
+--- Conteúdo do a.out gerado ---
+declare i32 @printf(ptr noundef, ...)
+declare i32 @__isoc99_scanf(ptr noundef, ...)
+@read_int = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@write_int = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@read_float = private unnamed_addr constant [3 x i8] c"%f\00", align 1
+@write_float = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
+
+@a = global i32 0
+@b = global i32 0
+
+define i32 @main() {
+  %1 = add i32 0, 10
+  store i32 %1, ptr @a
+  %2 = add i32 0, 1
+  store i32 %2, ptr @b
+  br label %L1
+
+L1:
+  %3 = load i32, ptr @a
+  %4 = add i32 0, 0
+  %5 = icmp sgt i32 %3, %4
+  %6 = zext i1 %5 to i32
+  %7 = trunc i32 %6 to i1
+  br i1 %7, label %L2, label %L3
+
+L2:
+  %8 = load i32, ptr @b
+  %9 = add i32 0, 1
+  %10 = sub nsw i32 %8, %9
+  %11 = load i32, ptr @a
+  %12 = add nsw i32 %10, %11
+  store i32 %12, ptr @b
+  %13 = load i32, ptr @a
+  %14 = add i32 0, 1
+  %15 = sub nsw i32 %13, %14
+  store i32 %15, ptr @a
+  br label %L1
+
+L3:
+  %16 = load i32, ptr @b
+  %17 = call i32 (ptr, ...) @printf(ptr @write_int, i32 %16)
+  ret i32 0
+}
+
+--- Resultado ---
+Valor de retorno: 0
