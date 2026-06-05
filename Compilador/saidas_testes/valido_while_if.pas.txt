@@ -1,0 +1,63 @@
+=== Arquivo: exemplos_pascal/validos/while_if.pas ===
+--- Saída do Terminal ---
+
+--- Conteúdo do a.out gerado ---
+declare i32 @printf(ptr noundef, ...)
+declare i32 @__isoc99_scanf(ptr noundef, ...)
+@read_int = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@write_int = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@read_float = private unnamed_addr constant [3 x i8] c"%f\00", align 1
+@write_float = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
+
+@i = global i32 0
+@num = global i32 0
+@maior = global i32 0
+
+define i32 @main() {
+  %1 = call i32 (ptr, ...) @__isoc99_scanf(ptr @read_int, ptr @maior)
+  %2 = add i32 0, 1
+  store i32 %2, ptr @i
+  br label %L1
+
+L1:
+  %3 = load i32, ptr @i
+  %4 = add i32 0, 10
+  %5 = icmp slt i32 %3, %4
+  %6 = zext i1 %5 to i32
+  %7 = trunc i32 %6 to i1
+  br i1 %7, label %L2, label %L3
+
+L2:
+  %8 = call i32 (ptr, ...) @__isoc99_scanf(ptr @read_int, ptr @num)
+  %9 = load i32, ptr @num
+  %10 = load i32, ptr @maior
+  %11 = icmp sgt i32 %9, %10
+  %12 = zext i1 %11 to i32
+  %13 = trunc i32 %12 to i1
+  br i1 %13, label %L4, label %L5
+
+L4:
+  %14 = load i32, ptr @num
+  store i32 %14, ptr @maior
+  br label %L6
+
+L5:
+  %15 = load i32, ptr @maior
+  store i32 %15, ptr @maior
+  br label %L6
+
+L6:
+  %16 = load i32, ptr @i
+  %17 = add i32 0, 1
+  %18 = add nsw i32 %16, %17
+  store i32 %18, ptr @i
+  br label %L1
+
+L3:
+  %19 = load i32, ptr @maior
+  %20 = call i32 (ptr, ...) @printf(ptr @write_int, i32 %19)
+  ret i32 0
+}
+
+--- Resultado ---
+Valor de retorno: 0
