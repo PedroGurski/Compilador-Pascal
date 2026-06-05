@@ -3,14 +3,20 @@
 #include <string.h>
 #include <stdio.h>
 
+
+// Ponteiro para o escopo ativo no momento da compilacao
 Escopo* escopo_atual = NULL;
 
+
+// Inicializa a tabela de simbolos criando o escopo global
 void tabela_simb_iniciar() {
     escopo_atual = (Escopo*)calloc(1, sizeof(Escopo));
     escopo_atual->pai = NULL;
     escopo_atual->locais = NULL;
 }
 
+
+// Empilha um novo escopo filho sobre o escopo atual
 void tabela_simb_entrar_escopo() {
     Escopo* novo = (Escopo*)calloc(1, sizeof(Escopo));
     novo->pai = escopo_atual;
@@ -18,6 +24,8 @@ void tabela_simb_entrar_escopo() {
     escopo_atual = novo;
 }
 
+
+// Desempilha o escopo atual, retornando ao escopo pai
 void tabela_simb_sair_escopo() {
     if (escopo_atual->pai) {
         Escopo* velho = escopo_atual;
@@ -30,6 +38,8 @@ void tabela_simb_sair_escopo() {
     }
 }
 
+
+// Insere uma variavel no escopo atual. Retorna NULL se ja existir
 NoSimb* tabela_simb_inserir_var(char* nome, TipoExp tipo, int eh_ref, int eh_global) {
     // Verifica se ja existe no escopo atual
     NoSimb* atual = escopo_atual->locais;
@@ -61,6 +71,8 @@ NoSimb* tabela_simb_inserir_var(char* nome, TipoExp tipo, int eh_ref, int eh_glo
     return n;
 }
 
+
+// Insere uma funcao no escopo atual com sua lista de parametros
 NoSimb* tabela_simb_inserir_func(char* nome, TipoExp tipo_retorno, NoSimb* parametros) {
     // Verifica se ja existe no escopo atual
     NoSimb* atual = escopo_atual->locais;
@@ -89,6 +101,8 @@ NoSimb* tabela_simb_inserir_func(char* nome, TipoExp tipo_retorno, NoSimb* param
     return n;
 }
 
+
+// Busca um simbolo pelo nome percorrendo os escopos do atual ate o global
 NoSimb* tabela_simb_buscar(char* nome) {
     Escopo* s = escopo_atual;
     while (s) {
@@ -104,6 +118,8 @@ NoSimb* tabela_simb_buscar(char* nome) {
     return NULL;
 }
 
+
+// Busca especificamente uma funcao pelo nome na cadeia de escopos
 NoSimb* tabela_simb_buscar_func(char* nome) {
     Escopo* s = escopo_atual;
     while (s) {
@@ -119,6 +135,8 @@ NoSimb* tabela_simb_buscar_func(char* nome) {
     return NULL;
 }
 
+
+// Cria um no de parametro sem inseri-lo na tabela (auxiliar de declaracao)
 NoSimb* tabela_simb_criar_param(char* nome, TipoExp tipo, int eh_ref) {
     NoSimb* n = (NoSimb*)calloc(1, sizeof(NoSimb));
     n->nome = strdup(nome);
