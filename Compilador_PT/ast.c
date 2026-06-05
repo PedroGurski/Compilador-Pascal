@@ -3,6 +3,10 @@
 #include <string.h>
 #include <stdio.h>
 
+
+/* Aloca um novo no da AST.
+ * Inicializa tipo, linha e tipo_exp como desconhecido.
+ * Retorna ponteiro para o no criado. */
 NoAST* ast_novo_no(TipoNoAST tipo, int linha) {
     NoAST* no = (NoAST*)calloc(1, sizeof(NoAST));
     no->tipo = tipo;
@@ -11,6 +15,8 @@ NoAST* ast_novo_no(TipoNoAST tipo, int linha) {
     return no;
 }
 
+
+// Cria o no raiz do programa com nome, declaracoes e corpo principal
 NoAST* ast_novo_programa(char* nome, NoAST* lista_id, NoAST* declaracoes, NoAST* subprogramas, NoAST* composto, int linha) {
     NoAST* n = ast_novo_no(AST_PROGRAMA, linha);
     n->programa.nome = strdup(nome);
@@ -21,6 +27,8 @@ NoAST* ast_novo_programa(char* nome, NoAST* lista_id, NoAST* declaracoes, NoAST*
     return n;
 }
 
+
+// Cria um no de declaracao de variavel com lista de ids e tipo
 NoAST* ast_nova_decl(NoAST* lista_id, TipoExp tipo, int linha) {
     NoAST* n = ast_novo_no(AST_DECLARACAO, linha);
     n->decl.lista_id = lista_id;
@@ -28,6 +36,8 @@ NoAST* ast_nova_decl(NoAST* lista_id, TipoExp tipo, int linha) {
     return n;
 }
 
+
+// Cria um no de declaracao de funcao ou procedimento
 NoAST* ast_nova_decl_func(char* nome, int eh_funcao, NoAST* parametros, TipoExp tipo_retorno, NoAST* declaracoes, NoAST* composto, int linha) {
     NoAST* n = ast_novo_no(AST_DECL_FUNC, linha);
     n->decl_func.nome = strdup(nome);
@@ -39,6 +49,8 @@ NoAST* ast_nova_decl_func(char* nome, int eh_funcao, NoAST* parametros, TipoExp 
     return n;
 }
 
+
+// Cria um no de parametro formal, com suporte a passagem por referencia
 NoAST* ast_novo_param(NoAST* lista_id, TipoExp tipo, int eh_ref, int linha) {
     NoAST* n = ast_novo_no(AST_PARAMETRO, linha);
     n->parametro.lista_id = lista_id;
@@ -47,6 +59,8 @@ NoAST* ast_novo_param(NoAST* lista_id, TipoExp tipo, int eh_ref, int linha) {
     return n;
 }
 
+
+// Cria um no de bloco composto (begin..end), absorvendo a lista de comandos
 NoAST* ast_novo_composto(NoAST* lista_comandos, int linha) {
     NoAST* n = ast_novo_no(AST_COMPOSTO, linha);
     n->lista.itens = lista_comandos ? lista_comandos->lista.itens : NULL;
@@ -57,6 +71,8 @@ NoAST* ast_novo_composto(NoAST* lista_comandos, int linha) {
     return n;
 }
 
+
+// Cria um no de atribuicao (variavel := expressao)
 NoAST* ast_nova_atribuicao(char* id, NoAST* expr, int linha) {
     NoAST* n = ast_novo_no(AST_ATRIBUICAO, linha);
     n->atribuicao.id = strdup(id);
@@ -64,6 +80,8 @@ NoAST* ast_nova_atribuicao(char* id, NoAST* expr, int linha) {
     return n;
 }
 
+
+// Cria um no de chamada de funcao ou procedimento com argumentos
 NoAST* ast_nova_chamada(char* id, NoAST* argumentos, int linha) {
     NoAST* n = ast_novo_no(AST_CHAMADA, linha);
     n->chamada.id = strdup(id);
@@ -71,6 +89,8 @@ NoAST* ast_nova_chamada(char* id, NoAST* argumentos, int linha) {
     return n;
 }
 
+
+// Cria um no de comando condicional if-then-else
 NoAST* ast_novo_se(NoAST* condicao, NoAST* ramo_entao, NoAST* ramo_senao, int linha) {
     NoAST* n = ast_novo_no(AST_SE, linha);
     n->comando_se.condicao = condicao;
@@ -79,6 +99,8 @@ NoAST* ast_novo_se(NoAST* condicao, NoAST* ramo_entao, NoAST* ramo_senao, int li
     return n;
 }
 
+
+// Cria um no de laco while com condicao e corpo
 NoAST* ast_novo_enquanto(NoAST* condicao, NoAST* corpo, int linha) {
     NoAST* n = ast_novo_no(AST_ENQUANTO, linha);
     n->comando_enquanto.condicao = condicao;
@@ -86,6 +108,8 @@ NoAST* ast_novo_enquanto(NoAST* condicao, NoAST* corpo, int linha) {
     return n;
 }
 
+
+// Cria um no de operacao binaria com operador e dois operandos
 NoAST* ast_nova_op_binaria(TipoOp op, NoAST* esq, NoAST* dir, int linha) {
     NoAST* n = ast_novo_no(AST_OP_BINARIA, linha);
     n->op_binaria.op = op;
@@ -94,12 +118,16 @@ NoAST* ast_nova_op_binaria(TipoOp op, NoAST* esq, NoAST* dir, int linha) {
     return n;
 }
 
+
+// Cria um no de referencia a variavel pelo nome
 NoAST* ast_nova_variavel(char* id, int linha) {
     NoAST* n = ast_novo_no(AST_VARIAVEL, linha);
     n->variavel.id = strdup(id);
     return n;
 }
 
+
+// Cria um no de literal inteiro com tipo ja definido
 NoAST* ast_novo_num_int(int val, int linha) {
     NoAST* n = ast_novo_no(AST_NUM_INT, linha);
     n->num_int = val;
@@ -107,6 +135,8 @@ NoAST* ast_novo_num_int(int val, int linha) {
     return n;
 }
 
+
+// Cria um no de literal real com tipo ja definido
 NoAST* ast_novo_num_real(double val, int linha) {
     NoAST* n = ast_novo_no(AST_NUM_REAL, linha);
     n->num_real = val;
@@ -114,6 +144,8 @@ NoAST* ast_novo_num_real(double val, int linha) {
     return n;
 }
 
+
+// Cria um no de lista generica (comandos, expressoes, parametros, etc)
 NoAST* ast_nova_lista(TipoNoAST tipo_lista, int linha) {
     NoAST* n = ast_novo_no(tipo_lista, linha);
     n->lista.itens = NULL;
@@ -121,6 +153,8 @@ NoAST* ast_nova_lista(TipoNoAST tipo_lista, int linha) {
     return n;
 }
 
+
+// Adiciona um item ao final de um no de lista, realocando o vetor interno
 void ast_lista_adicionar(NoAST* lista, NoAST* item) {
     if (!lista || !item) return;
     lista->lista.quantidade++;
@@ -128,12 +162,15 @@ void ast_lista_adicionar(NoAST* lista, NoAST* item) {
     lista->lista.itens[lista->lista.quantidade - 1] = item;
 }
 
+
+// Cria um no folha para um identificador dentro de uma lista de ids
 NoAST* ast_novo_item_lista_id(char* id, int linha) {
     NoAST* n = ast_novo_no(AST_LISTA_ID, linha);
     n->str_id = strdup(id);
     return n;
 }
 
+// Libera recursivamente toda a memoria de um no e seus filhos
 void ast_liberar(NoAST* no) {
     if (!no) return;
     switch(no->tipo) {
