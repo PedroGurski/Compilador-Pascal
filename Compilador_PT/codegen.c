@@ -12,25 +12,40 @@ static void gerar_no(NoAST* no);
 static char* gerar_exp(NoAST* no, TipoExp* tipo_saida);
 static void gerar_comando(NoAST* no);
 
+
+/* Aloca e retorna um novo registrador LLVM temporario
+ * Incrementa o contador global de registradores a cada chamada
+ * O chamador e responsavel por liberar a string retornada */
 static char* obter_novo_reg() {
     char* buf = (char*)malloc(32);
     sprintf(buf, "%%%d", contador_reg++);
     return buf;
 }
 
+
+/* Aloca e retorna um novo nome de label LLVM
+ * Incrementa o contador global de labels a cada chamada
+ * O chamador e responsavel por liberar a string retornada */
 static char* obter_nova_label() {
     char* buf = (char*)malloc(32);
     sprintf(buf, "L%d", contador_label++);
     return buf;
 }
 
+
+/* Retorna a string de tipo LLVM correspondente ao TipoExp
+ * Mapeia TIPO_INTEIRO -> i32, TIPO_REAL -> float, outros -> void
+ * Retorna ponteiro para string literal estatica (nao liberar) */
 static const char* tipo_llvm(TipoExp t) {
     if (t == TIPO_INTEIRO) return "i32";
     if (t == TIPO_REAL) return "float";
     return "void";
 }
 
-// Garante que ambos operandos tenham o mesmo tipo, e emite instrucoes de cast (conversao) se necessario
+
+/* Unifica dois operandos para o mesmo tipo emitindo cast se necessario
+ * Converte inteiro para real via sitofp quando os tipos diferem
+ * Retorna o tipo resultante apos a unificacao */
 static TipoExp unificar_tipos(char** reg_esq, TipoExp tipo_esq, char** reg_dir, TipoExp tipo_dir) {
     if (tipo_esq == tipo_dir) {
         return tipo_esq;
@@ -55,6 +70,10 @@ static TipoExp unificar_tipos(char** reg_esq, TipoExp tipo_esq, char** reg_dir, 
     return TIPO_DESCONHECIDO;
 }
 
+
+/* Gera declaracoes de variaveis globais em LLVM IR
+ * Insere cada variavel na tabela de simbolos e emite a diretiva global
+ * Aborta com erro semantico em caso de redeclaracao*/
 static void gerar_decls_globais(NoAST* lista) {
     if (!lista) return;
     for (int i = 0; i < lista->lista.quantidade; i++) {
@@ -74,6 +93,10 @@ static void gerar_decls_globais(NoAST* lista) {
     }
 }
 
+
+/* Gera declaracoes de variaveis locais via alloca em LLVM IR
+ * Insere cada variavel no escopo atual e emite alloca + store de zero
+ * Aborta com erro semantico em caso de redeclaracao */
 static void gerar_decls_locais(NoAST* lista) {
     if (!lista) return;
     for (int i = 0; i < lista->lista.quantidade; i++) {
@@ -98,6 +121,10 @@ static void gerar_decls_locais(NoAST* lista) {
     }
 }
 
+
+/* Gera o codigo LLVM de cada subprograma (funcao/procedimento) da lista
+ * Delega a geracao de cada no para gerar_no
+ * Ignora silenciosamente se a lista for nula */
 static void gerar_funcoes(NoAST* lista) {
     if (!lista) return;
     for (int i = 0; i < lista->lista.quantidade; i++) {
@@ -105,6 +132,10 @@ static void gerar_funcoes(NoAST* lista) {
     }
 }
 
+
+/* Gera codigo LLVM para uma expressao e retorna o registrador resultado
+ * Preenche tipo_saida com o tipo inferido da expressao
+ * O chamador e responsavel por liberar o registrador retornado */
 static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
     if (!no) {
         *tipo_saida = TIPO_VOID;
@@ -132,6 +163,7 @@ static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
             }
             char* reg = obter_novo_reg();
             if (simb->eh_ref) {
+                // Parametros por referencia: carrega o ponteiro antes do valor
                 char* temp_ptr = obter_novo_reg();
                 fprintf(saida, "  %s = load ptr, ptr %s\n", temp_ptr, simb->nome_llvm);
                 fprintf(saida, "  %s = load %s, ptr %s\n", reg, tipo_llvm(simb->tipo), temp_ptr);
@@ -165,6 +197,7 @@ static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
             for (int i = 0; i < qtd_arg; i++) {
                 NoAST* arg = no->chamada.argumentos->lista.itens[i];
                 if (param && param->eh_ref) {
+                    // Parametro por referencia: passa o endereco da variavel
                     if (arg->tipo != AST_VARIAVEL) {
                         fprintf(stderr, "Erro semantico: parametro de referencia exige uma variavel\n");
                         exit(1);
@@ -185,6 +218,7 @@ static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
                     TipoExp arg_t;
                     char* reg_arg = gerar_exp(arg, &arg_t);
                     if (param && param->tipo == TIPO_REAL && arg_t == TIPO_INTEIRO) {
+                        // Cast implicito de inteiro para real no argumento
                         char* reg_cast = obter_novo_reg();
                         fprintf(saida, "  %s = sitofp i32 %s to float\n", reg_cast, reg_arg);
                         free(reg_arg);
@@ -271,7 +305,7 @@ static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
             free(r2);
             
             if (no->op_binaria.op >= OP_IGUAL && no->op_binaria.op <= OP_MENOR_IGUAL) {
-                // LLVM retorna booleano i1 em comparacoes, entao converte pra i32 (inteiro do pascal)
+                // Comparacoes retornam i1 no LLVM; converte para i32 (inteiro Pascal)
                 char* reg_zext = obter_novo_reg();
                 fprintf(saida, "  %s = zext i1 %s to i32\n", reg_zext, reg);
                 free(reg);
@@ -288,6 +322,10 @@ static char* gerar_exp(NoAST* no, TipoExp* tipo_saida) {
     }
 }
 
+
+/* Gera codigo LLVM para um comando da AST
+ * Trata atribuicao, chamada (incluindo read/write), if e while
+ * Delega expressoes para gerar_exp e blocos compostos recursivamente */
 static void gerar_comando(NoAST* no) {
     if (!no) return;
     
@@ -309,6 +347,7 @@ static void gerar_comando(NoAST* no) {
             }
             
             if (simb->tipo == TIPO_REAL && tipo_r == TIPO_INTEIRO) {
+                // Cast implicito de inteiro para real na atribuicao
                 char* reg_cast = obter_novo_reg();
                 fprintf(saida, "  %s = sitofp i32 %s to float\n", reg_cast, reg_exp);
                 free(reg_exp);
@@ -320,6 +359,7 @@ static void gerar_comando(NoAST* no) {
             }
             
             if (simb->eh_ref) {
+                 // Parametro por referencia: desreferencia antes de armazenar
                 char* ptr_temp = obter_novo_reg();
                 fprintf(saida, "  %s = load ptr, ptr %s\n", ptr_temp, simb->nome_llvm);
                 fprintf(saida, "  store %s %s, ptr %s\n", tipo_llvm(tipo_r), reg_exp, ptr_temp);
@@ -332,6 +372,7 @@ static void gerar_comando(NoAST* no) {
         }
         case AST_CHAMADA: {
             if (strcasecmp(no->chamada.id, "read") == 0) {
+                // Procedimento built-in read: lê valores via scanf para cada argumento
                 for (int i = 0; i < no->chamada.argumentos->lista.quantidade; i++) {
                     NoAST* arg = no->chamada.argumentos->lista.itens[i];
                     if (arg->tipo != AST_VARIAVEL) continue;
@@ -353,12 +394,14 @@ static void gerar_comando(NoAST* no) {
                     if (ptr_temp) free(ptr_temp);
                 }
             } else if (strcasecmp(no->chamada.id, "write") == 0) {
+                // Procedimento built-in write: imprime valores via printf para cada argumento
                 for (int i = 0; i < no->chamada.argumentos->lista.quantidade; i++) {
                     TipoExp t;
                     char* reg = gerar_exp(no->chamada.argumentos->lista.itens[i], &t);
                     char* formato = t == TIPO_REAL ? "@write_float" : "@write_int";
                     
                     if (t == TIPO_REAL) {
+                        // printf exige double: promove float com fpext
                         char* reg_cast = obter_novo_reg();
                         fprintf(saida, "  %s = fpext float %s to double\n", reg_cast, reg);
                         char* temp = obter_novo_reg();
@@ -373,6 +416,7 @@ static void gerar_comando(NoAST* no) {
                     free(reg);
                 }
             } else {
+                // Chamada de funcao/procedimento usuario: delega para gerar_exp
                 TipoExp dummy;
                 char* reg = gerar_exp(no, &dummy);
                 if (reg) free(reg);
@@ -380,6 +424,7 @@ static void gerar_comando(NoAST* no) {
             break;
         }
         case AST_SE: {
+            // Gera condicao, trunca para i1 e emite branch condicional
             TipoExp tipo_cond;
             char* reg_cond = gerar_exp(no->comando_se.condicao, &tipo_cond);
             char* reg_trunc = obter_novo_reg();
@@ -409,6 +454,7 @@ static void gerar_comando(NoAST* no) {
             break;
         }
         case AST_ENQUANTO: {
+            // Emite laco com label de condicao, corpo e saida
             char* label_cond = obter_nova_label();
             char* label_corpo = obter_nova_label();
             char* label_fim = obter_nova_label();
@@ -441,6 +487,10 @@ static void gerar_comando(NoAST* no) {
     }
 }
 
+
+/* Gera codigo LLVM para um no da AST (programa ou declaracao de funcao)
+ * Para AST_PROGRAMA, emite variaveis globais, subprogramas e o main
+ * Para AST_DECL_FUNC, emite a assinatura, alocas e corpo da funcao */
 static void gerar_no(NoAST* no) {
     if (!no) return;
     
@@ -483,7 +533,7 @@ static void gerar_no(NoAST* no) {
                 }
             }
             
-            // Sai do escopo para inserir funcao globalmente
+            // Sai do escopo temporario para inserir a funcao no escopo pai
             tabela_simb_sair_escopo(); 
             NoSimb* func_inserida = tabela_simb_inserir_func(no->decl_func.nome, no->decl_func.tipo_retorno, param_inicio);
             if (!func_inserida) {
@@ -568,6 +618,10 @@ static void gerar_no(NoAST* no) {
     }
 }
 
+
+/* Ponto de entrada do gerador de codigo LLVM IR
+ * Inicializa tabela de simbolos, abre o arquivo de saida e emite os cabecalhos
+ * Percorre a AST completa e fecha o arquivo ao terminar */
 void gerador_codigo_gerar(NoAST* raiz) {
     tabela_simb_iniciar();
     
